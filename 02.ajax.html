@@ -1,0 +1,1307 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="UTF-8">
+		<meta name="viewport" content="width=device-width,minimum-scale=1.0,maximum-scale=1.0,initial-scale=1.0,user-scalable=no">
+		<!--width=device-width(宽为设备的宽),minimum-scale=1.0,maximum-scale=1.0,initial-scale=1.0(初始的缩放比例为1),user-scalable=no(不能够进行缩放处理)-->
+		<title>ajax实战音乐播放器</title>
+		<style>
+			*{
+				padding: 0;
+				margin: 0;
+				touch-action: none;
+			}
+			html{
+				height: 100%;
+				width: 100%;
+				overflow: hidden;
+				/*这个页面只有一屛，没有滚动条*/
+			}
+			body{
+				width: 100%;
+				height: 100%;
+				font: 14px/1.5 Tahoma,Arial,Roboto,"Droid Sans","Helvetica Neue","Droid Sans Fallback","Heiti SC",sans-self;
+			}
+			li {
+				list-style: none;
+			}
+			#main{
+				width: 100%;
+				height: 100%;
+				position: relative;
+				margin: 0 auto;
+			}
+			#musicList{ 
+				width:100%; 
+				height:100%; 
+				background: rgb(4,23,64);
+				/*background-size:cover;*/
+			}
+			#musicList .list_title {
+				width: 100%;
+				height: 60px;
+				/*background: -webkit-linear-gradient(left top, rgb(238,34,102) , rgb(81,0,118)); /* Safari 5.1 - 6.0 */
+				/*background: -o-linear-gradient(bottom right, rgb(238,34,102) , rgb(81,0,118)); /* Opera 11.1 - 12.0 */
+				/*background: -moz-linear-gradient(bottom right, rgb(238,34,102) , rgb(81,0,118)); /* Firefox 3.6 - 15 */
+				/*background: linear-gradient(to bottom right, rgb(238,34,102) , rgb(81,0,118));*/ /* 标准的语法 */
+				background:rgb(33,42,73);
+				color: #fff;
+				font-size: 20px;
+				line-height: 60px;
+				/*padding-left: 10px;*/
+				position: absolute;
+				top: 0;
+			}
+			.total_title {
+				position: absolute;
+				left: 10px;
+			}
+			#musicList .list_content {
+				background: rgb(38,53,86);
+				position: absolute;
+				top: 60px;
+				bottom: 80px;
+				width: 100%;
+				/*当播放列表上滑的时候如果没有这句会出bug*/
+				overflow: hidden;
+			}
+			#musicList .list_content #list_contentUL{
+				width: 100%;
+				position: absolute;
+				/*在pc端上通过改变top值可以有上移和下滑的效果，但是在移动端会出现卡顿现象，耗性能*/
+				top: 0;
+				left: 0;
+				/*三个参数分别是x,y,z的值，移动端用translated3d(不会卡顿)*/
+				transform: translate3d(0,0,0);
+				/*touch拖动时出现以下警告*/ 
+				/*touch-action: none;*/
+			}
+			#musicList .list_content #list_contentUL li {
+				width: 100%;
+				height: 70px;
+				border-bottom: 1px solid #999999;
+				box-sizing: border-box;
+			}
+			#musicList .list_content li.active {
+				border-left: 5px solid rgb(172,186,216);
+			}
+			@font-face {
+				font-family: 'iconfont';
+				src: url('fonts/iconfont.eot');
+				src: url('fonts/iconfont.eot?#iefix') format('embedded-opentype'),
+				url('fonts/iconfont.woff') format('woff'),
+				url('fonts/iconfont.ttf') format('truetype'),
+				url('fonts/iconfont.svg#iconfont') format('svg');
+			}
+			.iconfont{
+			  font-family:"iconfont" !important;
+			  font-size:30px;
+			  font-style:normal;
+			  -webkit-font-smoothing: antialiased;
+			  -webkit-text-stroke-width: 0.2px;
+			  -moz-osx-font-smoothing: grayscale;
+			}
+			#musicList .list_title .menu{
+				position: absolute;
+				right: 10px;
+			}
+			#musicList .list_audio {
+				width: 100%;
+				height: 80px;
+				background: rgb(33,42,73);
+				position: absolute;
+				bottom: 0;
+			}
+			.list_audio .list_audioImg {
+				width: 50px;
+				height: 50px;
+				border-radius: 50%;
+				float: left;
+				border: 1px solid #FFFFFF;
+				margin: 10px;
+				margin-right: 0;
+			}
+			.list_audio .list_audioImg.move {
+				/*4s 匀速 无限播放*/
+				animation: 4s linear infinite audioImgMove;
+				-webkit-animation: 4s linear infinite audioImgMove;
+			}
+			@keyframes audioImgMove{
+				0%{transform: rotate(0deg);}
+				100%{transform: rotate(360deg);}
+			}
+			@-webkit-keyframes audioImgMove{
+				0%{-webkit-transform: rotate(0deg);}
+				100%{-webkit-transform: rotate(360deg);}	
+			}
+			.list_audio .list_audioText {
+				/*width: 70%;*/
+				float: left;
+			}
+			.list_audio .list_audioBtn {
+				float: right;
+				margin:14px 10px 0 0;
+			}
+			.title {
+				color: #FFFFFF;
+				padding: 10px 0 0 10px;
+			}
+			.name {
+				color: #b3b3b3;
+				font-size: 13px;
+				padding: 2px 0 0 10px;
+			}
+			.list_audioBtn .stop {
+				color: #FFFFFF;
+				font-size: 35px;
+			}
+			
+			.musicDetails {
+				width: 100%;
+				height: 100%;
+				background: url(img/bg.jpg) no-repeat;
+				background-size:cover;
+				background-position: bottom;
+				position: absolute;
+				top: 0;
+				left: 0;
+				z-index: 10;
+				overflow: hidden;
+			}
+			.musicDetails .details_title {
+				width: 100%;
+				height: 60px;
+				background:rgb(33,42,73);
+				color: #fff;
+				font-size: 20px;
+				line-height: 60px;
+				/*padding-left: 10px;*/
+				/*position: absolute;*/
+				top: 0;
+			}
+			.musicDetails .details_title .title_name{
+				font-size: 12px;
+				padding-left: 10px;
+			}
+			.left {
+				float: left;
+				display: inline-block;
+				padding-left:10px;
+				padding-right:10px ;
+				font-size: 20px;
+			}
+			.total_title_special {
+				left: 20px;
+			}
+			.musicDetails .details_lyric {
+				width: 100%;
+				/*每首歌的歌词是不确定的所以我们不设置高度，高度自适应，指做个定位*/
+				position: absolute;
+				top: 63px;
+				bottom: 180px;
+				overflow: hidden;
+				transition: 0.5s;
+				-webkit-transition: 0.5s;
+			}
+			.musicDetails .details_lyric ul{
+				width: 100%;
+				text-align: center;
+				color: #FFFFFF;
+				font-size: 14px;
+				font-family: "微软雅黑";
+				/*因为歌词滚动的时候ul要运动，所以得加上一个定位*/
+				position: absolute;
+				top: 0;
+				left: 0;
+				transition: 0.2s;
+				-webkit-transition:0.2s;
+			}
+			.musicDetails .details_lyric li{
+				margin-top: 15px;
+				
+			}
+			.musicDetails .details_lyric li.active{
+				color: #579ed2;
+			}
+			.musicDetails .details_audio {
+				width: 100%;
+				height: 180px;
+				position: absolute;
+				bottom: 0;
+				transition: 0.5s;
+				-webkit-transition: 0.5s;
+			}
+			.musicDetails .details_audioAll {
+				width: 250px;
+				margin: 20px auto;
+				position: relative;
+				
+			}
+			.musicDetails .details_audioPro {
+				width: 100%;
+				height: 3px;
+				background: #FFFFFF;
+			}
+			.musicDetails #detailsAudioProBar {
+				width: 15px;
+				height: 15px;
+				border-radius:50%;
+				background: #936dda;
+				position: absolute;
+				left: 0;
+				top: 0;
+				margin-top: -7px;
+				margin-left: -7px;
+				/*touch-action: none;*/
+			}
+			
+			.musicDetails .details_audioProUp {
+				width: 0;
+				height: 3px;
+				background: #936dda;
+			}
+			.musicDetails .details_nowTime {
+				font-size: 12px;
+				color: #333;
+				position: absolute;
+				left: 0;
+				top: 0;
+				margin: 8px 0 0 -16px;
+			}
+			.musicDetails .details_allTime {
+				font-size: 12px;
+				color: #333;
+				position: absolute;
+				right: 0;
+				top: 0;
+				margin: 8px -16px 0 0;
+			}
+			.musicDetails .details_play {
+				color: #FFFFFF;
+				position: absolute;
+				left: 50%;
+				margin-left: -22px;
+				margin-top: 22px;
+			}
+			.musicDetails .details_play .play ,.prev,.next{
+				font-size: 45px;
+				
+			}
+			.musicDetails .details_prev {
+				color: #FFFFFF;
+				position: absolute;
+				left: 15%;
+				margin-top: 22px;
+				
+			}
+			
+			.musicDetails .details_next {
+				color: #FFFFFF;
+				position: absolute;
+				left: 65%;
+				margin-top: 22px;
+			}
+			.musicDetails .details_bth {
+				width: 100%;
+				position: absolute;
+				bottom: 30px;
+				/*两个li是并排的并且居中的*/
+				text-align: center;
+				
+			}
+			.musicDetails .details_bth li {
+				width: 7px;
+				height: 7px;
+				background: #936dda;
+				border-radius: 3px;
+				margin-right: 3px;
+				/*两个li是并排的并且居中的*/
+				display: inline-block;
+				transition:0.5s;
+				-webkit-transition: 0.5s;
+			}
+			.musicDetails .details_bth li.active {
+				width: 21px;
+			}
+			.musicDetails .details_message {
+				width: 80%;
+				position: absolute;
+				top: 63px;
+				bottom: 50px;
+				margin-left: 10%;
+				transition: 0.5s;
+				-webkit-transition: 0.5s;
+				overflow: hidden;
+			}
+			.musicDetails .details_message textarea{
+				width: 100%;
+				height: 100px;
+				border-radius: 5px;
+				background: #9babb2;
+				margin-top:10px;
+				outline: none;
+			}
+			::-webkit-input-placeholder{
+				color: black;
+			}
+			::-moz-input-placeholder{
+				color: black;
+			}
+			.musicDetails .details_message input{
+				width: 100%;
+				height: 30px;
+				color: #fff;
+				background: #29abe2;
+				border-radius: 5px;
+				border: none;
+			}
+			.musicDetails .details_message ul{
+				width: 100%;
+				font-size: 12px;
+				
+			}
+			.musicDetails .details_message li{
+				background: rgba(26,26,26,0.6);
+				border-radius: 5px;
+				padding: 10px;
+				color: #FFFFFF;
+				float: left;
+				/*float:left可以宽度自适应*/
+				clear: both;
+				margin-top: 10px;
+				transition: 1s;
+				-webkit-transition: 1s;
+			}
+			#loading {
+				position: absolute;
+				top: 0;
+				left: 0;
+				z-index: 20;
+				width: 100%;
+				height: 100%;
+				background: black;
+				overflow: hidden;
+			}
+			#loading .content1,#loading .content2 {
+				width: 30px;
+				height: 30px;
+				/*background: red;*/
+				position: absolute;
+				top: 50%;
+				left: 50%;
+				margin: -15px;
+			}
+			#loading .content1 div,#loading .content2 div{
+				/*在conten1里面是4个小的div*/
+				width:8px;
+				height: 8px;
+				border-radius: 50%;
+				background-color: #FFFFFF;
+				position: absolute;
+				animation: 2s linear infinite loadingMove;
+				-webkit-animation: 2s linear infinite loadingMove;
+			}
+			#loading .content1 .arc1,#loading .content2 .arc1{
+				/*这4个小的div分别是arc1*/
+				left: 0;
+				top: 0;
+			}
+			#loading .content1 .arc2,#loading .content2 .arc2{
+				right: 0;
+				top: 0;
+			}
+			#loading .content1 .arc3,#loading .content2 .arc3{
+				left: 0;
+				bottom: 0;
+			}
+			#loading .content1 .arc4,#loading .content2 .arc4{
+				right: 0;
+				bottom: 0;
+			}
+			#loading .content2 {
+				transform: rotate(45deg);
+				-webkit-transform: rotate(45deg);
+			}
+			/*给小球加上运动*/
+			@keyframes loadingMove{
+				0%{transform: scale(1);}
+				/*scale:收缩*/
+				50%{transform: scale(0);}
+				100%{transform: scale(1);}
+			}
+			@-webkit-keyframes loadingMove{
+				0%{-webkit-transform: scale(1);}
+				/*scale:收缩*/
+				50%{-webkit-transform: scale(0);}
+				100%{-webkit-transform: scale(1);}
+			}
+			/*-0.1s提前0.1s运动，即点开网页之前就能看到在运动*/
+			#loading .content1 .arc1 {
+				animation-delay: -0.1s;
+			}
+			#loading .content2 .arc1 {
+				animation-delay: -0.3s;
+			}
+			#loading .content1 .arc2 {
+				animation-delay: -0.5s;
+			}
+			#loading .content2 .arc2 {
+				animation-delay: -0.7s;
+			}
+			#loading .content1 .arc3 {
+				animation-delay: -0.9s;
+			}
+			#loading .content2 .arc3 {
+				animation-delay: -1.1s;
+			}
+			#loading .content1 .arc4 {
+				animation-delay: -1.3s;
+			}
+			#loading .content2 .arc4 {
+				animation-delay: -1.5s;
+			}
+			/*相邻的球之间有延迟的话看起来就像在转圈*/
+		</style>
+		<script type="text/javascript" src="js/jquery.min.js" ></script>
+		<script>
+			$(function(){
+//				console.log($(window).width());//1366改成375
+				var viewWidth=$(window).width();
+				var viewHeight=$(window).height();
+				var desWidth=750;
+				var touchstart='touchstart';
+				var touchmove='touchmove';
+				var touchend='touchend';
+				var $main=$('#main');
+				var $listContent=$('#listContent')
+				var $listContentUl=$('#list_contentUL');
+				var $listTitle=$('#listTitle');
+				var $musicDetails=$('.musicDetails');
+				var $listAudio=$('#listAudio');
+				var $detailsTitle=$('#detailsTitle');
+				var $left=$('.left');
+				//初始的音乐id为0
+				var id=0;
+				var $listAudioImg=$('#listAudioImg');
+				var $listAudioText=$('#listAudioText');
+				var $listAudioBtn=$('#listAudioBtn');
+				var $detailsName=$('#detailsName');
+				var $detailsSname=$('#details_sName');
+				//转成原生js
+				var oAudio=$('#audio1').get(0);
+				var $detailsAudioProBar=$('#detailsAudioProBar');
+				var $detailsAudioProUp=$('#detailsAudioProUp');
+				var $detailsNowTime=$('#detailsNowTime');
+				var $detailsAllTime=$('#detailsAllTime');
+				var $detailsPlay=$('#detailsPlay');
+				var $detailsPrev=$('#detailsPrev');
+				var $detailsNext=$('#detailsNext');
+				//根据索引找下一首歌
+				var index=0;
+				var $detailsLyric=$('#detailsLyric');
+				var $detailsLyricUl=$('#detailsLyricUl');
+				var $detailsAudio=$('#detailsAudio');
+				var $detailsMessage=$('#detailsMessage');
+				var $detailsMessageTa=$('#detailsMessageTa');
+				var $detailsMessageBtn=$('#detailsMessageBtn');
+				var $detailsMessageUl=$('#detailsMessageUl');
+				var $detailsBtn=$('#detailsBtn');
+				
+				//懒加载
+				var $loading=$('#loading');
+				
+				function init(){	//整个项目的初始化
+					loadingFn();
+					device();
+					musicList.init();
+					musicDetials.init();
+					musicAudio.init();
+				}
+				
+				function loadingFn(){    //loading效果
+					var arr = ['bg.jpg','wyy.png'];
+					var iNum = 0;
+					$.each(arr,function(i,img){
+						var objImg = new Image();
+						objImg.onload = function(){
+							iNum++;
+							if(iNum == arr.length){
+								$loading.animate({opacity:0},1000,function(){
+									$(this).remove();
+								});
+							}
+						};
+						objImg.onerror = function(){
+							$loading.animate({opacity:0},1000,function(){
+								$(this).remove();
+							});
+						};
+						objImg.src = 'img/' + img;
+					});
+				}
+				
+				function device(){	//兼容pc和移动端
+					//console.log(navigator.userAgent);
+					var isMobile=/Mobile/i.test(navigator.userAgent)
+					if(viewWidth>desWidth){
+						$main.css('width','750px');
+					}
+					if(!isMobile){
+						touchstart='mousedown';
+						touchmove='mousemove';
+						touchend='mouseup';
+					}
+					$(window).resize(function(){//当页面窗口大小发生变化的时候，也就是从竖屏变成横屏的时候，如果不改变，那么歌词页和留言页会挤在一起
+						viewHeight=$(window).width();
+						viewWidth=$(window).height();
+						musicDetials.slideDown();//还原为初始状态
+					})
+				}
+				
+				//列表的js部分
+				var musicList=(function(){
+					
+					var bbsUrl='http://music.163.com/';
+					var listUrl='musicList.php';
+					var downY=0;
+					//这个值是因为当移动了一次之后再次移动的时候，他的top值应该是之前的top加上再次移动的top,而不仅仅是第二次移动的距离
+					var downT=0;
+					var prevY=0;//前一次的Y轴坐标
+					var parentH=$listContent.height();
+					var childH=$listContentUl.height();//这里可能会是0，因为ul里面的内容是通过ajax拿来的，最开始程序还没执行到ajax的时候，他就没有高度，所以为了
+					//预防，我们在ajax之后再给他附一次值
+					var timer=null;
+					var speed=0;
+					
+					
+					//做一个开关:在平时的时候均为true,在ul的头部和list_content的头部在一起平齐的时候，开关关掉,重新定义downY(手指开始点击屏幕时的纵坐标y1)的值，即将此时手指的位置给downY,而不是最开始移动的时候的手指的位置
+					var off1=true;
+					var off2=true;
+					
+					//鉴定单点操作还是滑屏操作的开关(因为有时候滑屏的时候也会点到别的li)
+					var off3=true;
+					
+					//数据瀑布流懒加载
+					var $loadingLi=null;
+					//根据页码来获取懒加载的数据
+					var page=0;
+					
+					function init(){
+						data();
+						bind();
+						moveScroll();
+					}
+					
+					function data(){//数据
+						//发送ajax请求
+						$.ajax({
+							url:listUrl,
+							type:"GET",
+							dataType:"json",
+							success:function(data){
+								//jQuery.each() 函数用于遍历指定的对象和数组
+//								$(function () { 
+// 										$.each([52, 97], function(index, value) {
+//      								alert(index + ': ' + value);
+//  							});
+//							})
+								$.each(data, function(i,obj) {
+									var $li = '<li musicId="'+(obj.id)+'"><h3 class="title">'+(obj.musicName)+'</h3><p class="name">'+(obj.name)+'</p></li>';
+									$listContentUl.append($li);
+								});
+								
+								childH=$listContentUl.height();
+								
+							}
+						});
+					}
+					
+					function bind(){//事件操作
+						//这里的touchstart是变量，可以根据移动端和pc端的不同触发不同的事件
+						$listTitle.on(touchstart,function(){
+							window.location=bbsUrl;
+						})
+						
+						//因为li是ajax发送之后才有的，所以要借用ul的事件委托
+						//给ul加事件委托，通过li来触发
+						$listContentUl.delegate('li',touchend,function(){
+							if(off3){
+								$(this).attr('class','active').siblings().attr('class','');
+							//注意:滑屏的时候也会点击到
+							//即使给后面都加了off3开关仍然在滑屏的时候有问题，是因为touchstart是在touchmove之前起作用，所以此时off3还是true
+							//而此时是touchend了，所以此时的off3是false
+							
+							/*当我们点击li的时候找到对应的音乐id*/
+							id=$(this).attr('musicId');
+							//并且利用音乐模块的加载音乐方法来播放音乐
+							musicAudio.loadMusic(id);
+							
+							//获取当前播放歌曲的索引
+							index=$(this).index();
+							
+							}
+						})
+						
+						$listAudio.on(touchstart,function(){
+							musicDetials.slideUp();//调用该变量对象的方法
+						})
+					}
+					
+					function moveScroll(){//滑动列表
+						//因为苹果手机在滑动的时候默认会滑动整个页面，所以我们要先把默认行为给去掉
+						$(document).on(touchmove,function(ev){
+							ev.preventDefault();
+						})
+						
+						$listContentUl.on(touchstart,function(ev){
+							//在pc端下是event.pageX
+							//在移动端下是touch.pageX
+							//所以我们要先定义一个touch对象
+							//兼容event
+							//jq下的event->js的event->移动端的touch(移动端的touch是在原生的js下的)
+							//ev.originalEvent.changedTouches是一个集合返回第一个元素即可
+							if(parentH>childH){//即ul的高度很小时，就不用滑动了，后续代码不执行
+								return false;
+							}
+							var touch=ev.originalEvent.changedTouches?ev.originalEvent.changedTouches[0]:ev;
+							//console.log(touch.pageX);
+							
+							downY=touch.pageY;//手指开始点击屏幕时的纵坐标y1
+							prevY=touch.pageY;//在按下来的时候值和downY的值一样
+							var This=this;
+							downT=$(this).position().top;//滑动之前的top值
+							//鼠标按下的时候开关还原为初始状态
+							off1=true;
+							off2=true;
+							off3=true;
+							clearInterval(timer);
+							
+							//jq命名空间：可以在事件后面加上.自定义的名字，其实实际上的事件名并没有改变，但是这样可以把一些事件一起关闭
+							$listContentUl.on(touchmove+'.move',function(ev){
+								//此时为滑屏操作
+								off3=false;//这个off3=false的作用只在这个函数
+								
+								var touch=ev.originalEvent.changedTouches?ev.originalEvent.changedTouches[0]:ev;
+								var iTop=$(This).position().top;
+								speed=touch.pageY-prevY;
+								prevY=touch.pageY;
+								
+								//在头部和在尾部的时候我们要做一个滑不动的效果，所以我们得判断头部和尾部
+								if(iTop>=0){//在头部的时候让他走的慢一点，除以一个系数
+									if(off1){
+										downY=touch.pageY;
+										off1=false;
+									}
+									//此时不需要考虑downT
+									$(This).css('transform','translate3d(0,'+(touch.pageY-downY)/3+'px,0)');
+									
+								}else if(iTop<=parentH-childH){//尾部
+									if(off2){
+										downY=touch.pageY;
+										off2=false;
+										//滑到尾部时懒加载数据
+										$loadingLi=$('<li style="color:#fff">loading...</li>');
+										$(This).append($loadingLi);
+									}
+									//(parentH-childH)是因为此时当父盒子底部和ul的盒子底部平齐的时候才开始给downY赋合适的值，随着手指移动,translated3d里面的y的参数值要加上(parentH-childH)，不然top的绝对值太小了，列表又会滑到上面
+									$(This).css('transform','translate3d(0,'+((touch.pageY-downY)/3+(parentH-childH))+'px,0)');
+									
+								}else{
+									//在中间的时候
+									$(This).css('transform','translate3d(0,'+(touch.pageY-downY+downT)+'px,0)');
+								}
+								
+								
+							})
+							
+							$listContentUl.on(touchend+'.move',function(){
+								//在抬起手指的时候停止move事件，因为下次还要触发鼠标事件，所以start事件不能取消
+								$(this).off('.move');
+								
+								//结束滑屏的时候看看是否有懒加载(懒加载只有滑到底部的时候才有)
+								if($loadingLi){
+									$loadingLi.remove();
+									$loadingLi = null;
+									$.ajax({
+										type:"get",
+										url:"pageMusic.php",
+										dataType:"json",
+										data:{page:page},
+										//传输的是page页码，你要获得第一页的内容就获取第一页的页码，要获得第二页的内容就获取第二页的页码
+										success:function(data){
+											//console.log(data);
+											$.each(data, function(i,obj) {
+												var $li = '<li musicId="'+(obj.id)+'"><h3 class="title">'+(obj.musicName)+'</h3><p class="name">'+(obj.name)+'</p></li>';
+												$listContentUl.append($li);
+											});
+											
+											childH=$listContentUl.height();
+											page++;
+										}
+										
+										
+									});
+								}
+								
+								
+								//console.log(speed);
+								
+								if(!off3){//这里的意思是，off3是假的,但是这个函数可以执行，但是因为off3是假的，所以在执行这个函数的时候并不会给其他的li加上active
+									clearInterval(timer);//要用定时器先清定时器
+									timer=setInterval(function(){
+										var iTop=$(This).position().top;
+										
+										//判断定时器什么时候停止(即当speed很小的时候，也就是最后一次走的值和前一次走的值相差小于1px的时候)
+										if(Math.abs(speed)<1||iTop>50||iTop<(parentH-childH-50)){//除了两次两次移动差越来越小的时候直接拉取，还要控制不能ul的第一列往下拉太多，拉太多了也直接拉取
+											clearInterval(timer);
+											if(iTop>=0){
+												$(This).css('transition','.2s');
+												$(This).css('transform','translate3d(0,0,0)');
+											}else if(iTop<=(parentH-childH)){
+												$(This).css('transition','.2s');
+												$(This).css('transform','translate3d(0,'+(parentH-childH)+'px,0)');
+											}
+											
+											
+										}else{
+										
+										//减速
+										speed*=0.9;
+										
+										$(This).css('transform','translate3d(0,'+(iTop+speed)+'px,0)');
+										
+										}
+									},13)
+								}
+								
+							})
+							
+							return false;//阻止冒泡
+						})
+						
+						//webkitTransitionEnd为了兼容
+						//transiton过渡结束之后触发此事件
+						$listContentUl.on('transitonend webkitTransitionEnd',function(){
+							$(this).css('transition','');
+						});
+						
+					}
+					//显示
+					function show(sName,sMusicName,sImg){
+						$listAudioImg.attr('src','qqMusicWj/'+sImg);
+						$listAudioText.find('h3').html(sMusicName);
+						$listAudioText.find('p').html(sName);
+						$listAudioBtn.show();
+					}
+					
+					//要在外部调用的函数就需要在这里写接口
+					return {
+						init : init,
+						show : show
+					};
+					
+				})();//自己已经调用了
+				
+				
+				//音乐详情页模块操作
+				
+				var musicDetials=(function(){
+					//现在歌词是一个字符串，我们要进行拆分成这样的格式然后存在一个数组中
+					//[00:37.496]让我再看你一遍
+					//[00:38.694]从南到北
+					var reg=/\[[^[]+/g;//[^]表示字符类取反[^abc]匹配的就是不是a和b和c的单个字符
+					//这个正则的意思就是以[开头往下匹配直到不是[为止
+					var arr=[];
+					var $li=null;//因为scrollLyric在playing()里面不停的被触发，所以它里面的变量要提到外面，保持性能
+					//当歌词滚动的时候每次走一个li的高度
+					var iLiH=0;
+					var downX=0;//按下的鼠标坐标
+					var range=20;//指定左右滑屏的范围
+					var timer=null;
+					
+					function init(){//初始
+						$musicDetails.css('transform','translate3d(0,'+(viewHeight)+'px,0)');
+						$detailsMessage.css('transform','translate3d('+(viewWidth)+'px,0,0)')
+						bind();
+					}
+					
+					//向上展开
+					function slideUp(){
+						if(id){//当id有值的时候也就是正在播放音乐的时候才能向上展开
+							$musicDetails.css('transition','.5s');
+							$musicDetails.css('transform','translate3d(0,0,0)');
+						}
+					}
+					
+					//向左收回
+					//向下收缩之后，让他还原为初始状态
+					function slideDown(){
+						$musicDetails.css('transform','translate3d(0,'+(viewHeight)+'px,0)');
+						$musicDetails.one('transitionend webkitTransitionEnd',function(){
+							$detailsLyric.add($detailsAudio).css('transform','translate3d(0,0,0)');
+									$detailsMessage.css('transform','translate3d('+(viewWidth)+'px,0,0)');
+									$detailsBtn.find('li').eq(0).attr('class','active').siblings().attr('class','');
+						})
+					}
+					
+					//详细页的时间操作
+					function bind(){//在初始的时候调用一下
+						$left.on(touchstart,function(){
+							slideDown();
+						})
+						
+						$musicDetails.on(touchstart,function(ev){
+							var touch=ev.originalEvent.changedTouches?ev.originalEvent.changedTouches[0]:ev;
+							downX=touch.pageX;
+							
+							$musicDetails.on(touchend+'.move',function(ev){
+								$(this).off('.move');
+								var touch=ev.originalEvent.changedTouches?ev.originalEvent.changedTouches[0]:ev;
+								if(touch.pageX-downX<-range){//向左滑动(比较按下的鼠标坐标和抬起的鼠标坐标)
+									//因为歌词和下面媒体部分和留言部分要运动，所以给他们加上过渡
+									
+									$detailsLyric.add($detailsAudio).css('transform','translate3d('+(-viewWidth)+'px,0,0)');
+									$detailsMessage.css('transform','translate3d(0,0,0)');
+									//底下的小按钮要改变
+									$detailsBtn.find('li').eq(1).attr('class','active').siblings().attr('class','');
+									//调用留言
+									loadMessage();
+									clearInterval(timer);
+									timer=setInterval(scrollMessage,3000);
+									
+									
+								}else if(touch.pageX-downX>range){//向右滑动
+									$detailsLyric.add($detailsAudio).css('transform','translate3d(0,0,0)');
+									$detailsMessage.css('transform','translate3d('+(viewWidth)+'px,0,0)');
+									$detailsBtn.find('li').eq(0).attr('class','active').siblings().attr('class','');
+									//切换到歌词页的时候把滚动留言定时器清掉
+									clearInterval(timer);
+								}
+							})
+						})
+						
+						//在详情页的绑定当中写上点击发表按钮，发表留言
+						$detailsMessageBtn.on(touchstart,function(){
+							addMessage();
+						})
+					}
+					
+					function show(sName,sMusicName,sLyric){//显示
+						$detailsName.html(sMusicName);
+						$detailsSname.html(sName);
+						$detailsLyricUl.empty().css('transform','translate3d(0,0,0)');
+						//console.log(sLyric);
+						arr=sLyric.match(reg);
+						//console.log(arr);//将歌词以//[00:37.496]让我再看你一遍
+					                             //[00:38.694]从南到北
+					                    //这种格式分开
+					    //再近一步的把arr数组拆成二维数组，一个存时间一个存歌词
+					    for(var i=0;i<arr.length;i++){
+					    	arr[i]=[formatTime(arr[i].substring(0,11)),arr[i].substring(11).trim()];
+					    }
+					    //console.log(arr);输出二维数组，歌词和时间分开了 trim()去掉字符串前后的空格
+					    
+					    for(var i=0;i<arr.length;i++){
+					    	$detailsLyricUl.append('<li>'+arr[i][1]+'</li>');
+					    }
+					    
+					    //一开始第一行是选中的
+					    $li=$detailsLyricUl.find('li');
+					    iLiH=$li.first().outerHeight(true);//true包括margin值
+					    $detailsLyricUl.find('li').eq(0).attr('class','active');
+					}
+					
+					//将[00:00:00]也就是二维数组的第一个值里面的时间转成总秒数，就可以和歌曲当前播放的时间的秒数相比较，从而给li加上active
+					function formatTime(num){
+						//console.log(num);//[00:37.496]
+						//先去中括号
+						num=num.substring(1,num.length-1);
+						//console.log(num);//00:37.496
+						var arr=num.split(':');//用:分隔
+//						console.log(arr);
+						//console.log((parseFloat(arr[0]*60)+parseFloat(arr[1])).toFixed(2));
+						return (parseFloat(arr[0]*60)+parseFloat(arr[1])).toFixed(2);
+					}
+					
+					function scrollLyric(ct){//滚动歌词,传进来当前时间
+						//console.log(ct);
+//						console.log(arr);和前一个函数中的arr是不一样的
+						for(var i=0;i<arr.length;i++){
+							if(i!=arr.length-1&&ct>arr[i][0]&&ct<arr[i+1][0]){//ct是总秒数能直接比较的原因是arr[i][0]已结格式化了
+								
+								$li.eq(i).attr('class','active').siblings().attr('class','');
+								if(i>3){//即当蓝色字体走到第四列的时候ul再往上走
+									$detailsLyricUl.css('transform','translate3d(0,'+(-iLiH*(i-3))+'px,0)');
+							
+								}else{//当歌曲播放到后面再往回拖拽的时候，跳不回去了，因为i<3,所以我们要加一条
+									$detailsLyricUl.css('transform','translate3d(0,0,0)')
+								}
+							}else if(i==arr.length-1&&ct>arr[i][0]){
+								$li.eq(i).attr('class','active').siblings().attr('class','');
+								$detailsLyricUl.css('transform','translate3d(0,'+(-iLiH*(i-3))+'px,0)')
+							}
+							//此时会有一个bug,当我们播放完一首，播放下一首时，他的歌词累加了，乱了，所以我们要在show()方法里面把前一首歌的歌词清空
+						}
+						
+						
+					}
+					
+					function loadMessage(){//载入留言
+						//每次请求的时候要先清空原来的，再载入新的
+						$detailsMessageUl.empty();
+						$.ajax({
+							url:'loadMessage.php',
+							type:"GET",
+							dataType:"json",
+							//把每一首歌的id标识传到后端对应我们的mid
+							data:{mid:id},
+							success:function(data){
+								//console.log(data);
+								//遍历
+								$.each(data, function(i,obj) {
+									var $li=$('<li>'+(obj.text.trim())+'</li>')
+									$detailsMessageUl.prepend($li);
+								});
+							}
+						})
+						
+					}
+					
+					function addMessage(){//添加留言
+						var value=$detailsMessageTa.val();
+						//获取到了value值之后就把输入框清空
+						$detailsMessageTa.val('');
+						$.ajax({
+							url:"addMessage.php",
+							dataType:"json",
+							type:"POST",
+							data:{mid:id,text:value},
+							success:function(data){
+								//console.log(data);
+								if(data.code){//添加成功
+									var $li=$('<li>'+data.message+'</li>');
+									$detailsMessageUl.prepend($li)
+								}
+							}
+						})
+					}
+					
+					function scrollMessage(){//留言的动态切换  每隔一段时间触发，定时器
+						var $last=$detailsMessageUl.find('li').last();
+						$detailsMessageUl.prepend($last);//把最后一个变到第一个
+						$last.css('opacity',0);
+						setTimeout(function(){//延迟一下 方法用于在指定的毫秒数后调用函数或计算表达式。
+							$last.css('opacity',1);
+						},200)
+					}
+					return {//接口
+						init:init,
+						slideUp:slideUp,
+						slideDown:slideDown,
+						show:show,
+						scrollLyric:scrollLyric//因为要在外面调用所以提供一个接口
+					};
+					
+				})();
+				
+				
+				//音乐播放器模块
+				var musicAudio=(function(){
+					var parentW=$detailsAudioProBar.parent().width();//为了让拖拽时小圆球不被拖出去，要知道他的父元素的宽
+					var disX=0;//差值
+					var timer=null;//定时器
+					var scale=0;//当前时间和总时间的比值
+					var onoff=true;//播放器的暂停和开始状态的切换
+					//先写一个初始的方法
+					function init(){
+						bind();
+					}
+					
+					//载入音乐
+					function loadMusic(id){
+						
+						//发送ajax请求
+						$.ajax({
+							type:"get",
+							url:"musicAudio.php",
+							dataType:"json",
+							data:{id:id},//把id传到后端通过id来找到数据data:传输的数据,json格式键名id:键值所点击的li的id
+							async:false,//同步 甄姬下能够播放，因为之前是异步，会延迟
+							success:function(data){//返回的data是对象
+//								console.log(data);{id: "3", name: "花粥", musicName: "我在十点差三分的时候开始想你", lyric: "[00:00.00] 作曲 : 花粥 [00:00.100] 作词 : 花粥 [00:00.300]…00]所以我让歌名长到很难念完一遍 [02:17.000]念到后面 [02:24.000]忘了前面", img: "shidianchasanfen.jpg", …}
+								show(data);
+							}
+						});
+					}
+					
+					//显示
+					function show(obj){
+						var sName=obj.name;
+						var sMusicName=obj.musicName;
+						var sLyric=obj.lyric;
+						var sImg=obj.img;
+						var sAudio=obj.audio;
+						//因为这里是在列表页和详情页显示，具体函数写在列表页和详情页，在这里只调用方法
+						musicList.show(sName,sMusicName,sImg);
+						musicDetials.show(sName,sMusicName,sLyric);
+						oAudio.src='qqMusicWJ/'+sAudio;//让音乐加载进入原生的js对象oAudio中
+						//再把原生js变成jquery
+						//用one不用on的原因是如果一次点了3首歌，用on的话就是一个oAudio一下被绑定了三次，而用one就可以限定，一次只绑定一次
+						play();
+						$(oAudio).one('canplaythrough',function(){//这里其实也是异步，等到检测到之后才触发
+							//音乐加载完毕之后
+//							play();
+							//歌曲总时间  oAudio.duration得到的时间是总秒数，所以要把它格式化
+							$detailsAllTime.html(formatTime(oAudio.duration));
+						})
+						
+						//播放结束触发下一首歌
+						$(oAudio).one('ended',function(){
+							next();
+							
+						})
+					}
+						
+						//播放音乐方法
+						function play(){
+							onoff=false;
+							$listAudioImg.addClass('move');//在css中已经写了move，让图片旋转
+							$listAudioBtn.html('&#xe6ad;');
+							oAudio.play();
+							$detailsPlay.html('&#xe6ad;');
+							//播放进行中这个函数在播放的时候调用
+							playing();//这个函数一直重复调用(用到定时器)
+							clearInterval(timer);//要用定时器先清定时器
+							timer=setInterval(playing,1000);//1秒钟执行一次，让时间有个变化
+						}
+						
+						//暂停音乐方法
+						function pause(){
+							onoff=true;
+							$listAudioImg.removeClass('move');//在css中已经写了move，让图片旋转
+							$listAudioBtn.html('&#xe768;');
+							oAudio.pause();
+							$detailsPlay.html('&#xe768;');
+							//暂停的时候清定时器
+							clearInterval(timer);
+						}
+						
+						
+						function bind(){//在初始的时候调用一下
+							$detailsPlay.on(touchstart,function(){
+								if(onoff){
+									play();//这样的设计比较巧妙：巧妙之处在于可以在点击的时候可以改变onoff的状态
+								}else{
+									pause();
+								}
+								return false;//点击之后直接切断后续操作，不让他触动滑屏
+							})
+							
+							$listAudioBtn.on(touchstart,function(){
+								if(onoff){
+									play();//这样的设计比较巧妙：巧妙之处在于可以在点击的时候可以改变onoff的状态
+								}else{
+									pause();
+								}
+								return false;//点击之后直接切断后续操作，不让他触动滑屏
+							})
+							
+							//对按钮进行拖拽:音乐可以快进
+							//拖拽的时候要修改比例值，不然松开鼠标。小圆球依然弹回去
+							$detailsAudioProBar.on(touchstart,function(ev){
+								
+								$(document).on(touchmove,function(ev){
+									ev.preventDefault();
+								})
+								
+								var touch=ev.originalEvent.changedTouches?ev.originalEvent.changedTouches[0]:ev;
+								var This=this;
+								disX=touch.pageX-$(this).position().left;//disX表示鼠标里浏览器最左侧的距离，减去当前的left值，就是鼠标离容器最左端的距离
+								//当我们拖拽的时候就不要让进度条自己往前走了，这里要清定时器
+								clearInterval(timer);
+								
+								$detailsAudioProBar.on(touchmove+'.move',function(ev){
+									var touch=ev.originalEvent.changedTouches?ev.originalEvent.changedTouches[0]:ev;
+									//限制可以拖拽的范围，不能让他把小圆球拖出去了
+									var L=touch.pageX-disX;
+									if(L<=0){
+										L=0;
+									}else if(L>=parentW){
+										L=parentW;
+									}
+									$(This).css('left',L);
+									scale=L/parentW;
+									//新的比例值，当前位置的left除以父元素的宽度
+								})
+								
+								$detailsAudioProBar.on(touchend+'.move',function(){
+									$(this).off('.move');//取消事件
+									oAudio.currentTime=scale*oAudio.duration;
+									//在鼠标结束拖拽之后再开启定时器，进度条自动走
+									playing();//这个函数一直重复调用(用到定时器)
+									clearInterval(timer);//要用定时器先清定时器
+									timer=setInterval(playing,1000);//1秒钟执行一次，让时间有个变化
+								})
+								
+								return false;//阻止冒泡
+							
+							});
+							
+							//点击向左箭头，切换前一首
+							$detailsPrev.on(touchstart,function(){
+								prev();
+							})
+							
+							//点击向右箭头，切换后一首
+							$detailsNext.on(touchstart,function(){
+								next();
+							})
+						}
+						
+						function next(){//下一首歌，播放下一首歌的时候其实就是重新调用了loadMusic(id)方法
+									var $li=$listContentUl.find('li');
+									//我们这里要做一个循环：当播放到最后一首歌的时候回到第一首歌
+									index=index==$li.length-1?0:index+1;
+									//根据此时得到的已经加1过了的索引知道对应的li,然后在获取我们自定义的id属性，就能获取到下一首歌的id
+									id=$li.eq(index).attr('musicId');
+									//此时结束了一首歌之后会放下一首：正常情况下details界面的歌手名和歌名都改了，还有list界面下面的歌手名也改了，但是列表中的active没有改变
+									$li.eq(index).attr('class','active').siblings().attr('class','');
+									loadMusic(id);
+									//这里我们用索引来找下一首歌而不用id的原因是:如果我们把某一首歌删掉了，那么这个id=3在数据库中就不存在了,id=2后面就直接是id=4了，所以这样就不好找，只有列表的索引是比较靠谱的，不会变
+									
+								}
+								
+								function prev(){//上一首歌
+									var $li=$listContentUl.find('li');
+									//我们这里要做一个循环：当播放到第一首歌的时候回到最后一首歌
+									index=index==0?$li.length-1:index-1;
+									//根据此时得到的已经加1过了的索引知道对应的li,然后在获取我们自定义的id属性，就能获取到下一首歌的id
+									id=$li.eq(index).attr('musicId');
+									$li.eq(index).attr('class','active').siblings().attr('class','');
+									loadMusic(id);
+									//这里我们用索引来找下一首歌而不用id的原因是:如果我们把某一首歌删掉了，那么这个id=3在数据库中就不存在了,id=2后面就直接是id=4了，所以这样就不好找，只有列表的索引是比较靠谱的，不会变
+									
+							}
+						
+						//格式化歌曲总时间
+						function formatTime(num){
+							num=parseInt(num);//歌曲总秒数
+							var iM=Math.floor(num%3600/60);
+							var iS=Math.floor(num%60);
+							return toZero(iM) + ':' + toZero(iS);
+						}
+						
+						//补零操作
+						function toZero(num){
+							if(num<10){
+								return '0'+num;
+							}else{
+								return ''+num;
+							}
+						}
+					
+					
+						//播放进行中当前时间的变化和进度条往前走
+						function playing(){
+							$detailsNowTime.html(formatTime(oAudio.currentTime));//虽然oAudio.currentTime可以根据音乐播放获得他的当前时间，也要通过定时器一秒一动，将这个当前时间传到$detailsNowTime.html()里面
+							scale=oAudio.currentTime/oAudio.duration;
+							$detailsAudioProUp.css('width',scale*100+'%');//宽度也是每秒随着改变
+							$detailsAudioProBar.css('left',scale*100+'%');
+							musicDetials.scrollLyric(oAudio.currentTime);
+						}
+					
+					//返回接口
+					return {
+						init:init,
+						loadMusic:loadMusic
+					}
+					
+					
+				})();				
+				
+				init();
+			})
+		</script>
+	</head>
+	<body>
+		<div id="main">
+			<div id="loading">
+				<div class="content1">
+					<div class="arc1"></div>
+					<div class="arc2"></div>
+					<div class="arc3"></div>
+					<div class="arc4"></div>
+				</div>
+				<div class="content2">
+					<div class="arc1"></div>
+					<div class="arc2"></div>
+					<div class="arc3"></div>
+					<div class="arc4"></div>
+				</div>
+			</div>
+			<div id="musicList">
+				<div id="listTitle" class="list_title"><span class="total_title">播放列表</span><span class="iconfont menu">&#xe65e;</span></div>
+				<div class="list_content" id="listContent">
+					<ul id="list_contentUL">
+						
+					</ul>
+					
+				</div>
+				<div class="list_audio" id="listAudio">
+					<img id="listAudioImg" class="list_audioImg" src="img/wyy.png"/>
+					<div class="list_audioText" id="listAudioText">
+						<h3 class="title">WWY</h3>
+						<p class="name">音乐播放器</p>
+					</div>
+					<div class="list_audioBtn"><span class="stop iconfont" id="listAudioBtn" style="display: none;">&#xe768;</span></div>
+				</div>
+			</div>
+			<div class="musicDetails">
+				<div class="details_title" id="detailsTitle">
+					<span class="iconfont left">&#xe956;</span>
+					<div class="details_name total_title_special"><span id="detailsName">安河桥</span><span class="title_name" id="details_sName">宋冬野</span></div>
+				</div>
+				<div class="details_lyric" id="detailsLyric">
+					<!--歌词能够向上走其实就是控制ul的位置-->
+					<ul id="detailsLyricUl">
+						<!--<li>歌词测试文字</li>
+						<li class="active">歌词测试文字</li>
+						<li>歌词测试文字</li>
+						<li>歌词测试文字</li>
+						<li>歌词测试文字</li>
+						<li>歌词测试文字</li>-->
+					</ul>
+				</div>
+				<div class="details_audio" id="detailsAudio">
+					<div class="details_audioAll">
+						<div class="details_audioPro">
+							<div class="details_audioProUp" id="detailsAudioProUp"></div>
+							<div class="details_audioProBar" id="detailsAudioProBar"></div>
+						</div>
+						<div class="details_nowTime" id="detailsNowTime">00:00</div>
+						<div class="details_allTime" id="detailsAllTime">03:14</div>
+						<div class="details_play"><i class="play iconfont" id="detailsPlay">&#xe768;</i></div>
+						<div class="details_prev"><i class="prev iconfont" id="detailsPrev">&#xe8f6;</i></div>
+						<div class="details_next"><i class="next iconfont" id="detailsNext">&#xe8f7;</i></div>
+					</div>
+				</div>
+				<div class="details_message" id="detailsMessage">
+					<textarea placeholder="文明上网，理性留言" id="detailsMessageTa"></textarea>
+					<input type="button" value="发表" id="detailsMessageBtn"/>
+					<ul id="detailsMessageUl">
+						<!--<li>留言测试1</li>
+						<li>留言测试2</li>
+						<li>留言测试3</li>-->
+					</ul>
+				</div>
+				<ul class="details_bth" id="detailsBtn">
+					<li class="active"></li>
+					<li></li>
+				</ul>
+			</div>
+		</div>
+		<audio id="audio1">
+			
+		</audio>
+	</body>
+</html>
